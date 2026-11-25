@@ -1,3 +1,4 @@
+const DEFAULT_GAS_URL = "[https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec](https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec)";
 /**
  * KANTINKU HR - FRONTEND APPLICATION LOGIC
  * Ganti DEFAULT_GAS_URL di bawah dengan URL Web App Google Apps Script kamu (/exec),
