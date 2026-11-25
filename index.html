@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0D9488" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="KantinKu HR" />
+  <title>KantinKu HR — Absen Makan & Monitoring Catering</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Library Grafik & Generator QR Code -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- HEADER GLASSMORPHISM -->
+    <header class="app-header">
+      <div class="brand-wrap">
+        <div class="brand-logo">🍽️</div>
+        <div>
+          <h1 class="brand-title">KantinKu HR</h1>
+          <p class="brand-subtitle" id="liveClockLabel">Memuat waktu...</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btnOpenPinModal" class="btn-pill-glass" aria-label="Masuk Mode Admin">
+          <span class="dot-status" id="roleDot"></span>
+          <span id="roleBadgeText">Mode Karyawan</span>
+        </button>
+        <button type="button" id="btnLockAdmin" class="btn-icon-danger hidden" title="Kunci Mode Admin">
+          🔒 Keluar
+        </button>
+      </div>
+    </header>
+
+    <!-- BANNER PERINGATAN JIKA URL API BELUM DIISI -->
+    <div id="apiConfigBanner" class="config-banner hidden">
+      <span>⚠️ URL Google Apps Script belum diatur.</span>
+      <button type="button" id="btnQuickSetupApi">Atur Sekarang</button>
+    </div>
+
+    <!-- =========================================================
+         VIEW 1: MODE KARYAWAN (DEFAULT SAAT SCAN QR DI KANTIN)
+         ========================================================= -->
+    <main id="employeeView" class="view-container">
+      <!-- Switcher Cepat: Absen Makan vs Saran/Keluhan -->
+      <div class="segmented-control">
+        <button type="button" class="seg-btn active" data-emp-tab="tabAbsen">
+          🍛 Absen Makan
+        </button>
+        <button type="button" class="seg-btn" data-emp-tab="tabSaran">
+          💬 Saran / Keluhan
+        </button>
+      </div>
+
+      <!-- FORM ABSEN MAKAN (< 10 DETIK) -->
+      <section id="tabAbsen" class="card-glass fade-in">
+        <div class="card-header-row">
+          <div>
+            <h2>Check-In Makan Karyawan</h2>
+            <p class="text-muted">Isi data di bawah sebelum mengambil porsi makanan.</p>
+          </div>
+          <span class="badge-teal">1x / Shift</span>
+        </div>
+
+        <form id="formAbsenKaryawan" novalidate>
+          <!-- Nama Karyawan (Otomatis diingat di HP karyawan) -->
+          <div class="form-group">
+            <div class="label-between">
+              <label for="empNama">Nama Lengkap Karyawan <span class="req">*</span></label>
+              <button type="button" id="btnResetSavedName" class="btn-text-link hidden">Ganti Nama</button>
+            </div>
+            <input type="text" id="empNama" class="input-lg" placeholder="Ketik nama lengkap kamu..." autocomplete="name" required />
+            <small id="savedNameHint" class="helper-text hidden">✨ Nama otomatis terisi dari kunjungan sebelumnya.</small>
+          </div>
+
+          <!-- Departemen (Quick Chips + Input) -->
+          <div class="form-group">
+            <label for="empDepartemen">Departemen / Divisi</label>
+            <div class="chip-grid" id="deptChips">
+              <button type="button" class="chip" data-val="Operasional">Operasional</button>
+              <button type="button" class="chip" data-val="F&B">F&B</button>
+              <button type="button" class="chip" data-val="Kitchen">Kitchen</button>
+              <button type="button" class="chip" data-val="Housekeeping">Housekeeping</button>
+              <button type="button" class="chip" data-val="Front Office">Front Office</button>
+              <button type="button" class="chip" data-val="Back Office">Back Office</button>
+            </div>
+            <input type="text" id="empDepartemen" class="input-md mt-8" placeholder="Atau ketik nama departemen..." />
+          </div>
+
+          <!-- Shift Makan (Manual Quick-Select) -->
+          <div class="form-group">
+            <label>Pilih Shift Makan <span class="req">*</span></label>
+            <div class="shift-grid" id="absenShiftGrid">
+              <button type="button" class="shift-card" data-shift="Pagi">
+                <span class="shift-icon">🌅</span>
+                <span class="shift-name">Pagi</span>
+              </button>
+              <button type="button" class="shift-card active" data-shift="Siang">
+                <span class="shift-icon">☀️</span>
+                <span class="shift-name">Siang</span>
+              </button>
+              <button type="button" class="shift-card" data-shift="Malam">
+                <span class="shift-icon">🌙</span>
+                <span class="shift-name">Malam</span>
+              </button>
+              <button type="button" class="shift-card" data-shift="Lembur">
+                <span class="shift-icon">⚡</span>
+                <span class="shift-name">Lembur</span>
+              </button>
+            </div>
+            <input type="hidden" id="absenShiftVal" value="Siang" />
+          </div>
+
+          <!-- Jam Makan & Tanggal -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="absenJam">Jam Makan <span class="req">*</span></label>
+              <input type="time" id="absenJam" class="input-md" required />
+            </div>
+            <div class="form-group">
+              <label for="absenTanggal">Tanggal <span class="req">*</span></label>
+              <input type="date" id="absenTanggal" class="input-md" required />
+            </div>
+          </div>
+
+          <!-- Catatan Opsional -->
+          <div class="form-group">
+            <label for="absenCatatan">Catatan Opsional</label>
+            <input type="text" id="absenCatatan" class="input-md" placeholder="Contoh: Tanpa sambal / diet khusus" />
+          </div>
+
+          <button type="submit" class="btn-primary-gradient btn-block" id="btnSubmitAbsen">
+            <span>✅ Simpan Absen Makan</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- FORM SARAN / KOMENTAR KARYAWAN -->
+      <section id="tabSaran" class="card-glass fade-in hidden">
+        <div class="card-header-row">
+          <div>
+            <h2>Saran & Keluhan Makanan</h2>
+            <p class="text-muted">Laporkan jika porsi habis, rasa kurang pas, atau kebersihan area makan.</p>
+          </div>
+        </div>
+
+        <form id="formSaranKaryawan" novalidate>
+          <!-- 3 Kategori Baku -->
+          <div class="form-group">
+            <label>Pilih Kategori Laporan <span class="req">*</span></label>
+            <div class="category-grid-3" id="saranCategoryGrid">
+              <button type="button" class="cat-card active" data-cat="Porsi Habis">
+                <span class="cat-emoji"> empty / 🍽️</span>
+                <span class="cat-title">Porsi Habis</span>
+              </button>
+              <button type="button" class="cat-card" data-cat="Rasa/Menu">
+                <span class="cat-emoji">🍲</span>
+                <span class="cat-title">Rasa/Menu</span>
+              </button>
+              <button type="button" class="cat-card" data-cat="Kebersihan">
+                <span class="cat-emoji">✨</span>
+                <span class="cat-title">Kebersihan</span>
+              </button>
+            </div>
+            <input type="hidden" id="saranKategoriVal" value="Porsi Habis" />
+          </div>
+
+          <!-- Shift Makan -->
+          <div class="form-group">
+            <label>Shift Makan Terkait <span class="req">*</span></label>
+            <div class="chip-grid" id="saranShiftChips">
+              <button type="button" class="chip" data-val="Pagi">Pagi</button>
+              <button type="button" class="chip active" data-val="Siang">Siang</button>
+              <button type="button" class="chip" data-val="Malam">Malam</button>
+              <button type="button" class="chip" data-val="Lembur">Lembur</button>
+            </div>
+            <input type="hidden" id="saranShiftVal" value="Siang" />
+          </div>
+
+          <!-- Nama Pelapor (Opsional / Anonim) -->
+          <div class="form-group">
+            <div class="label-between">
+              <label for="saranNama">Nama Pelapor (Opsional)</label>
+              <label class="checkbox-inline">
+                <input type="checkbox" id="chkAnonim" /> Kirim Anonim
+              </label>
+            </div>
+            <input type="text" id="saranNama" class="input-md" placeholder="Kosongkan jika ingin anonim" />
+          </div>
+
+          <!-- Isi Komentar + Quick Templates -->
+          <div class="form-group">
+            <label for="saranIsi">Detail Keluhan / Masukan <span class="req">*</span></label>
+            <div class="chip-grid mb-8" id="quickComplaintChips">
+              <button type="button" class="chip-outline" data-text="Lauk utama sudah habis saat jam istirahat.">Lauk habis</button>
+              <button type="button" class="chip-outline" data-text="Nasi habis, mohon ditambah porsinya.">Nasi habis</button>
+              <button type="button" class="chip-outline" data-text="Rasa masakan terlalu asin / kurang bumbu.">Rasa kurang pas</button>
+              <button type="button" class="chip-outline" data-text="Meja makan dan tempat sampah perlu dibersihkan.">Area kurang bersih</button>
+            </div>
+            <textarea id="saranIsi" rows="3" class="input-md" placeholder="Tuliskan keluhan atau saran menu di sini..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="saranTanggal">Tanggal <span class="req">*</span></label>
+            <input type="date" id="saranTanggal" class="input-md" required />
+          </div>
+
+          <button type="submit" class="btn-primary-gradient btn-block" id="btnSubmitSaran">
+            <span>📩 Kirim Saran / Keluhan</span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <!-- =========================================================
+         VIEW 2: MODE ADMIN (DASHBOARD, GRAFIK, INSIGHT, RIWAYAT)
+         ========================================================= -->
+    <main id="adminView" class="view-container hidden">
+      <!-- Filter Periode Global Admin -->
+      <div class="period-bar card-glass">
+        <div class="period-pills" id="periodPills">
+          <button type="button" class="period-btn active" data-period="today">Hari Ini</button>
+          <button type="button" class="period-btn" data-period="week">Minggu Ini</button>
+          <button type="button" class="period-btn" data-period="month">Bulan Ini</button>
+          <button type="button" class="period-btn" data-period="custom">Custom</button>
+        </div>
+        <div id="customDateRange" class="custom-range-row hidden">
+          <input type="date" id="filterStartDate" class="input-sm" />
+          <span>s/d</span>
+          <input type="date" id="filterEndDate" class="input-sm" />
+          <button type="button" id="btnApplyCustomDate" class="btn-teal-sm">Terapkan</button>
+        </div>
+      </div>
+
+      <!-- TAB ADMIN 1: DASHBOARD SUMMARY & INSIGHTS -->
+      <section id="adminTabDashboard" class="admin-section fade-in">
+        <!-- 3 KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card kpi-teal">
+            <div class="kpi-top">
+              <span class="kpi-label">Total Karyawan Makan</span>
+              <span class="kpi-icon">🍛</span>
+            </div>
+            <div class="kpi-value" id="kpiTotalMakan">0</div>
+            <div class="kpi-sub" id="kpiMakanTrend">Membandingkan periode...</div>
+          </div>
+
+          <div class="kpi-card kpi-indigo">
+            <div class="kpi-top">
+              <span class="kpi-label">Total Catring Tersedia</span>
+              <span class="kpi-icon">📦</span>
+            </div>
+            <div class="kpi-value" id="kpiTotalCatring">0</div>
+            <div class="kpi-sub" id="kpiSelisihPorsi">Selisih: 0 porsi</div>
+          </div>
+
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-top">
+              <span class="kpi-label">Saran / Komentar</span>
+              <span class="kpi-icon">💬</span>
+            </div>
+            <div class="kpi-value" id="kpiTotalSaran">0</div>
+            <div class="kpi-sub" id="kpiPorsiHabisCount">0 laporan porsi habis</div>
+          </div>
+        </div>
+
+        <!-- Insight Otomatis -->
+        <div class="card-glass mt-16">
+          <div class="card-header-row">
+            <h3>💡 Insight & Analisis Otomatis</h3>
+            <button type="button" id="btnRefreshData" class="btn-text-link">↻ Muat Ulang</button>
+          </div>
+          <div class="insight-list" id="insightContainer">
+            <div class="insight-item">
+              <span class="insight-badge badge-indigo">Kategori Terbesar</span>
+              <div>
+                <strong id="insightTopCatring">-</strong>
+                <p id="insightTopCatringDesc">Belum ada data catering pada periode ini.</p>
+              </div>
+            </div>
+            <div class="insight-item">
+              <span class="insight-badge badge-teal">Rata-rata Harian</span>
+              <div>
+                <strong id="insightAvgDaily">0 Karyawan / Hari</strong>
+                <p id="insightAvgDailyDesc">Dihitung dari hari aktif makan pada periode terpilih.</p>
+              </div>
+            </div>
+            <div class="insight-item">
+              <span class="insight-badge badge-purple">Perbandingan Periode</span>
+              <div>
+                <strong id="insightPeriodCompare">0% vs periode sebelumnya</strong>
+                <p id="insightPeriodCompareDesc">Perubahan jumlah konsumsi makan karyawan.</p>
+              </div>
+            </div>
+            <div class="insight-item" id="insightAlertBox">
+              <span class="insight-badge badge-warning">Status Stok</span>
+              <div>
+                <strong id="insightStockHealth">Menunggu data...</strong>
+                <p id="insightStockHealthDesc">Sistem memantau rasio absen makan terhadap stok catering.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grafik Ringkas: Absen Makan vs Catring Tersedia -->
+        <div class="card-glass mt-16">
+          <h3>📊 Perbandingan Absen Makan vs. Catring Tersedia</h3>
+          <p class="text-muted mb-12">Pantau apakah stok porsi catering mencukupi atau berlebih per hari.</p>
+          <div class="chart-wrapper">
+            <canvas id="chartCompareMain"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB ADMIN 2: VISUALISASI ANALITIK LENGKAP -->
+      <section id="adminTabAnalytics" class="admin-section fade-in hidden">
+        <div class="card-glass">
+          <h3>📈 Tren Harian / Bulanan Absen Makan</h3>
+          <p class="text-muted mb-12">Pergerakan jumlah karyawan yang mengambil makan.</p>
+          <div class="chart-wrapper">
+            <canvas id="chartTrendLine"></canvas>
+          </div>
+        </div>
+
+        <div class="card-glass mt-16">
+          <h3>🍱 Porsi Catring per Kategori Menu</h3>
+          <p class="text-muted mb-12">Distribusi porsi catering berdasarkan kategori paket/sesi.</p>
+          <div class="chart-wrapper chart-sm">
+            <canvas id="chartCatringCategory"></canvas>
+          </div>
+        </div>
+
+        <div class="card-glass mt-16">
+          <h3>📣 Sebaran Kategori Keluhan & Saran</h3>
+          <p class="text-muted mb-12">Identifikasi keluhan terbanyak (Porsi Habis, Rasa/Menu, Kebersihan).</p>
+          <div class="chart-wrapper chart-sm">
+            <canvas id="chartSaranCategory"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB ADMIN 3: RIWAYAT TRANSAKSI (READ-ONLY) -->
+      <section id="adminTabHistory" class="admin-section fade-in hidden">
+        <div class="card-glass">
+          <div class="card-header-row">
+            <div>
+              <h3>📜 Riwayat Data (Read-Only)</h3>
+              <p class="text-muted">Data tersinkron langsung dari Google Sheets. Edit/hapus dinonaktifkan demi keamanan audit.</p>
+            </div>
+          </div>
+
+          <!-- Search & Filter Bar -->
+          <div class="history-filters">
+            <input type="search" id="historySearch" class="input-md" placeholder="🔍 Cari nama karyawan, catatan, atau keluhan..." />
+            <div class="filter-row-2 mt-8">
+              <select id="historyTypeFilter" class="input-md">
+                <option value="ALL">Semua Jenis Data</option>
+                <option value="ABSEN">Absen Makan</option>
+                <option value="CATRING">Catring Tersedia</option>
+                <option value="SARAN">Saran / Komentar</option>
+              </select>
+              <select id="historySubFilter" class="input-md">
+                <option value="ALL">Semua Shift / Kategori</option>
+                <option value="Pagi">Shift: Pagi</option>
+                <option value="Siang">Shift: Siang</option>
+                <option value="Malam">Shift: Malam</option>
+                <option value="Lembur">Shift: Lembur</option>
+                <option value="Porsi Habis">Keluhan: Porsi Habis</option>
+                <option value="Rasa/Menu">Keluhan: Rasa/Menu</option>
+                <option value="Kebersihan">Keluhan: Kebersihan</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- List Riwayat -->
+          <div id="historyListContainer" class="history-list mt-12"></div>
+        </div>
+      </section>
+
+      <!-- TAB ADMIN 4: QR KANTIN & PENGATURAN KONEKSI -->
+      <section id="adminTabSettings" class="admin-section fade-in hidden">
+        <div class="card-glass text-center">
+          <h3>📱 QR Code Kantin (Siap Cetak)</h3>
+          <p class="text-muted mb-12">Tempel QR Code ini di pintu masuk/meja kantin agar karyawan langsung membuka form absen makan.</p>
+          <div id="qrPrintArea" class="qr-card-box">
+            <div class="qr-card-header">SCAN ABSEN MAKAN KARYAWAN</div>
+            <div id="qrcodeCanvas" class="qr-canvas-center"></div>
+            <div class="qr-card-footer">Arahkan kamera HP Anda • Selesai dalam 5 detik</div>
+          </div>
+          <button type="button" id="btnPrintQr" class="btn-primary-gradient btn-block mt-12">
+            🖨️ Cetak / Simpan Gambar QR
+          </button>
+        </div>
+
+        <div class="card-glass mt-16">
+          <h3>⚙️ Koneksi Google Apps Script</h3>
+          <p class="text-muted mb-8">Pastikan URL Web App berakhiran <code>/exec</code>.</p>
+          <div class="form-group">
+            <label for="inputGasUrl">URL Web App Google Apps Script</label>
+            <input type="url" id="inputGasUrl" class="input-md" placeholder="https://script.google.com/macros/s/.../exec" />
+          </div>
+          <button type="button" id="btnSaveGasUrl" class="btn-teal-block">💾 Simpan URL Koneksi</button>
+        </div>
+      </section>
+
+      <!-- BOTTOM NAVIGATION BAR (KHUSUS MODE ADMIN) -->
+      <nav class="bottom-nav" aria-label="Navigasi Utama Admin">
+        <button type="button" class="nav-item active" data-admin-tab="adminTabDashboard">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-label">Dashboard</span>
+        </button>
+        <button type="button" class="nav-item" data-admin-tab="adminTabAnalytics">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Grafik</span>
+        </button>
+        <button type="button" class="nav-fab" id="btnOpenQuickAdd" aria-label="Tambah Transaksi">
+          <span>+</span>
+        </button>
+        <button type="button" class="nav-item" data-admin-tab="adminTabHistory">
+          <span class="nav-icon">📜</span>
+          <span class="nav-label">Riwayat</span>
+        </button>
+        <button type="button" class="nav-item" data-admin-tab="adminTabSettings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">QR & Info</span>
+        </button>
+      </nav>
+    </main>
+  </div>
+
+  <!-- =========================================================
+       MODAL 1: VERIFIKASI PIN ADMIN
+       ========================================================= -->
+  <div id="modalPin" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3>🔐 Masuk Mode Admin</h3>
+        <button type="button" class="btn-close-modal" data-close="modalPin">✕</button>
+      </div>
+      <p class="text-muted mb-12">Masukkan PIN Admin untuk melihat dashboard, grafik, dan menambah stok catering.</p>
+      <form id="formVerifyPin">
+        <div class="form-group">
+          <input type="password" id="inputAdminPin" class="input-pin" inputmode="numeric" maxlength="10" placeholder="••••••" required />
+        </div>
+        <button type="submit" class="btn-primary-gradient btn-block" id="btnConfirmPin">Buka Dashboard Admin</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: "+ TAMBAH TRANSAKSI" (CATRING / ABSEN / SARAN)
+       ========================================================= -->
+  <div id="modalQuickAdd" class="modal-overlay hidden">
+    <div class="modal-sheet modal-tall">
+      <div class="modal-header">
+        <h3>➕ Tambah Data Baru</h3>
+        <button type="button" class="btn-close-modal" data-close="modalQuickAdd">✕</button>
+      </div>
+
+      <!-- Pilihan Jenis Input Admin -->
+      <div class="segmented-control mb-12">
+        <button type="button" class="seg-btn active" data-admin-form="formBoxCatring">📦 Catring Tersedia</button>
+        <button type="button" class="seg-btn" data-admin-form="formBoxAdminAbsen">🍛 Absen Makan</button>
+      </div>
+
+      <!-- Form Input Catring Tersedia -->
+      <form id="formCatringAdmin" class="admin-add-form">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="catTanggal">Tanggal <span class="req">*</span></label>
+            <input type="date" id="catTanggal" class="input-md" required />
+          </div>
+          <div class="form-group">
+            <label for="catShift">Shift Makan <span class="req">*</span></label>
+            <select id="catShift" class="input-md" required>
+              <option value="Pagi">Pagi</option>
+              <option value="Siang" selected>Siang</option>
+              <option value="Malam">Malam</option>
+              <option value="Lembur">Lembur</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="catKategoriMenu">Kategori Paket / Menu Catering <span class="req">*</span></label>
+          <div class="chip-grid mb-8" id="catMenuChips">
+            <button type="button" class="chip active" data-val="Makan Siang Reguler">Makan Siang Reguler</button>
+            <button type="button" class="chip" data-val="Makan Pagi / Sarapan">Makan Pagi / Sarapan</button>
+            <button type="button" class="chip" data-val="Makan Malam">Makan Malam</button>
+            <button type="button" class="chip" data-val="Paket Lembur">Paket Lembur</button>
+          </div>
+          <input type="text" id="catKategoriMenu" class="input-md" value="Makan Siang Reguler" required />
+        </div>
+
+        <div class="form-group">
+          <label for="catJumlahPorsi">Jumlah Porsi Tersedia <span class="req">*</span></label>
+          <input type="number" id="catJumlahPorsi" class="input-lg" min="1" step="1" placeholder="Contoh: 85" required />
+        </div>
+
+        <div class="form-group">
+          <label for="catCatatan">Catatan / Nama Vendor (Opsional)</label>
+          <input type="text" id="catCatatan" class="input-md" placeholder="Contoh: Vendor Sari Rasa + 5 box cadangan" />
+        </div>
+
+        <button type="submit" class="btn-primary-gradient btn-block" id="btnSubmitCatring">
+          📦 Simpan Stok Catring
+        </button>
+      </form>
+
+      <!-- Form Input Manual Absen Makan oleh Admin -->
+      <form id="formAbsenManualAdmin" class="admin-add-form hidden">
+        <div class="form-group">
+          <label for="admAbsenNama">Nama Karyawan <span class="req">*</span></label>
+          <input type="text" id="admAbsenNama" class="input-md" placeholder="Nama karyawan..." required />
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="admAbsenShift">Shift <span class="req">*</span></label>
+            <select id="admAbsenShift" class="input-md">
+              <option value="Pagi">Pagi</option>
+              <option value="Siang" selected>Siang</option>
+              <option value="Malam">Malam</option>
+              <option value="Lembur">Lembur</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="admAbsenJam">Jam Makan <span class="req">*</span></label>
+            <input type="time" id="admAbsenJam" class="input-md" required />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="admAbsenTanggal">Tanggal <span class="req">*</span></label>
+            <input type="date" id="admAbsenTanggal" class="input-md" required />
+          </div>
+          <div class="form-group">
+            <label for="admAbsenDept">Departemen</label>
+            <input type="text" id="admAbsenDept" class="input-md" placeholder="Opsional" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="admAbsenCatatan">Catatan</label>
+          <input type="text" id="admAbsenCatatan" class="input-md" placeholder="Input manual oleh Admin" />
+        </div>
+        <button type="submit" class="btn-primary-gradient btn-block" id="btnSubmitAdmAbsen">
+          ✅ Simpan Absen Makan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 3: SETUP URL API CEPAT
+       ========================================================= -->
+  <div id="modalApiSetup" class="modal-overlay hidden">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3>🔗 Hubungkan Google Sheets</h3>
+        <button type="button" class="btn-close-modal" data-close="modalApiSetup">✕</button>
+      </div>
+      <p class="text-muted mb-12">Tempel URL Web App dari Google Apps Script yang berakhiran <code>/exec</code>.</p>
+      <div class="form-group">
+        <input type="url" id="modalInputGasUrl" class="input-md" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <button type="button" id="btnModalSaveGasUrl" class="btn-primary-gradient btn-block">Simpan & Hubungkan</button>
+    </div>
+  </div>
+
+  <!-- LOADING OVERLAY & TOAST NOTIFICATION -->
+  <div id="globalLoader" class="loader-overlay hidden">
+    <div class="spinner"></div>
+    <p id="loaderText">Menyimpan data...</p>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
