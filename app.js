@@ -1,11 +1,8 @@
-const DEFAULT_GAS_URL = "[https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec](https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec)";
 /**
- * KANTINKU HR - FRONTEND APPLICATION LOGIC
- * Ganti DEFAULT_GAS_URL di bawah dengan URL Web App Google Apps Script kamu (/exec),
- * atau atur langsung lewat tombol Pengaturan di dalam aplikasi.
+ * KANTINKU HR - FRONTEND APPLICATION LOGIC (UPDATED DIAGNOSTICS)
+ * Tempelkan URL Web App Google Apps Script kamu yang berakhiran /exec di bawah ini:
  */
-const DEFAULT_GAS_URL = "";
-
+const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec
 const STORAGE_KEYS = {
   GAS_URL: "kantinku_gas_url",
   EMP_NAME: "kantinku_emp_name",
@@ -45,7 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
   checkGasUrlConfig();
   bindAllEvents();
 
-  // Cek apakah sesi admin masih aktif di tab ini
   const savedSessionPin = sessionStorage.getItem(STORAGE_KEYS.ADMIN_PIN);
   if (savedSessionPin) {
     state.isAdmin = true;
@@ -61,8 +57,15 @@ function registerServiceWorker() {
   }
 }
 
+function isValidExecUrl(url) {
+  return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(\?.*)?$/.test(String(url || "").trim());
+}
+
 function getGasUrl() {
-  return localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL;
+  const saved = localStorage.getItem(STORAGE_KEYS.GAS_URL);
+  if (isValidExecUrl(saved)) return saved.trim();
+  if (isValidExecUrl(DEFAULT_GAS_URL)) return DEFAULT_GAS_URL.trim();
+  return "";
 }
 
 function checkGasUrlConfig() {
@@ -71,7 +74,7 @@ function checkGasUrlConfig() {
   const inputSettings = document.getElementById("inputGasUrl");
   if (inputSettings) inputSettings.value = url;
 
-  if (!url || !url.startsWith("https://script.google.com/")) {
+  if (!isValidExecUrl(url)) {
     banner.classList.remove("hidden");
   } else {
     banner.classList.add("hidden");
@@ -132,10 +135,9 @@ function restoreSavedEmployeeProfile() {
 }
 
 /* =========================================================
-   2. EVENT LISTENERS (INTERAKSI TOMBOL & FORM)
+   2. EVENT LISTENERS
    ========================================================= */
 function bindAllEvents() {
-  // Switcher Tab Karyawan (Absen vs Saran)
   document.querySelectorAll("[data-emp-tab]").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("[data-emp-tab]").forEach(b => b.classList.remove("active"));
@@ -146,7 +148,6 @@ function bindAllEvents() {
     });
   });
 
-  // Shift Card Selector (Absen Makan)
   document.querySelectorAll("#absenShiftGrid .shift-card").forEach(card => {
     card.addEventListener("click", () => {
       document.querySelectorAll("#absenShiftGrid .shift-card").forEach(c => c.classList.remove("active"));
@@ -155,7 +156,6 @@ function bindAllEvents() {
     });
   });
 
-  // Departemen Chips
   document.querySelectorAll("#deptChips .chip").forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#deptChips .chip").forEach(c => c.classList.remove("active"));
@@ -164,7 +164,6 @@ function bindAllEvents() {
     });
   });
 
-  // Reset Saved Name
   document.getElementById("btnResetSavedName").addEventListener("click", () => {
     localStorage.removeItem(STORAGE_KEYS.EMP_NAME);
     localStorage.removeItem(STORAGE_KEYS.EMP_DEPT);
@@ -175,7 +174,6 @@ function bindAllEvents() {
     document.getElementById("empNama").focus();
   });
 
-  // Kategori Saran (3 Kategori Baku)
   document.querySelectorAll("#saranCategoryGrid .cat-card").forEach(card => {
     card.addEventListener("click", () => {
       document.querySelectorAll("#saranCategoryGrid .cat-card").forEach(c => c.classList.remove("active"));
@@ -184,7 +182,6 @@ function bindAllEvents() {
     });
   });
 
-  // Shift Chips di Form Saran
   document.querySelectorAll("#saranShiftChips .chip").forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#saranShiftChips .chip").forEach(c => c.classList.remove("active"));
@@ -193,15 +190,12 @@ function bindAllEvents() {
     });
   });
 
-  // Quick Complaint Chips
   document.querySelectorAll("#quickComplaintChips .chip-outline").forEach(chip => {
     chip.addEventListener("click", () => {
-      const textarea = document.getElementById("saranIsi");
-      textarea.value = chip.dataset.text;
+      document.getElementById("saranIsi").value = chip.dataset.text;
     });
   });
 
-  // Checkbox Anonim
   document.getElementById("chkAnonim").addEventListener("change", (e) => {
     const inputNama = document.getElementById("saranNama");
     if (e.target.checked) {
@@ -213,13 +207,9 @@ function bindAllEvents() {
     }
   });
 
-  // Submit Form Absen Karyawan
   document.getElementById("formAbsenKaryawan").addEventListener("submit", handleEmployeeAbsenSubmit);
-
-  // Submit Form Saran Karyawan
   document.getElementById("formSaranKaryawan").addEventListener("submit", handleEmployeeSaranSubmit);
 
-  // Modal PIN Admin
   document.getElementById("btnOpenPinModal").addEventListener("click", () => {
     if (state.isAdmin) return;
     document.getElementById("inputAdminPin").value = "";
@@ -229,7 +219,6 @@ function bindAllEvents() {
 
   document.getElementById("formVerifyPin").addEventListener("submit", handleAdminLogin);
 
-  // Kunci / Keluar Admin
   document.getElementById("btnLockAdmin").addEventListener("click", () => {
     state.isAdmin = false;
     state.adminPin = "";
@@ -238,7 +227,6 @@ function bindAllEvents() {
     showToast("Mode Admin dikunci. Kembali ke Mode Karyawan.", "success");
   });
 
-  // Bottom Navigation Admin
   document.querySelectorAll(".bottom-nav .nav-item").forEach(item => {
     item.addEventListener("click", () => {
       document.querySelectorAll(".bottom-nav .nav-item").forEach(n => n.classList.remove("active"));
@@ -249,13 +237,11 @@ function bindAllEvents() {
     });
   });
 
-  // FAB "+ Tambah Transaksi" Admin
   document.getElementById("btnOpenQuickAdd").addEventListener("click", () => {
     initDefaultFormDatesAndTimes();
     openModal("modalQuickAdd");
   });
 
-  // Switcher Form di dalam Modal "+ Tambah"
   document.querySelectorAll("[data-admin-form]").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("[data-admin-form]").forEach(b => b.classList.remove("active"));
@@ -266,7 +252,6 @@ function bindAllEvents() {
     });
   });
 
-  // Chips Kategori Menu Catering
   document.querySelectorAll("#catMenuChips .chip").forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll("#catMenuChips .chip").forEach(c => c.classList.remove("active"));
@@ -275,13 +260,9 @@ function bindAllEvents() {
     });
   });
 
-  // Submit Catring Tersedia
   document.getElementById("formCatringAdmin").addEventListener("submit", handleAdminCatringSubmit);
-
-  // Submit Absen Manual Admin
   document.getElementById("formAbsenManualAdmin").addEventListener("submit", handleAdminManualAbsenSubmit);
 
-  // Period Filter Buttons
   document.querySelectorAll("#periodPills .period-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#periodPills .period-btn").forEach(b => b.classList.remove("active"));
@@ -304,72 +285,94 @@ function bindAllEvents() {
     renderAdminAnalyticsAndHistory();
   });
 
-  // Refresh Data Admin
   document.getElementById("btnRefreshData").addEventListener("click", fetchAdminDashboardData);
-
-  // History Search & Filter
   document.getElementById("historySearch").addEventListener("input", renderHistoryList);
   document.getElementById("historyTypeFilter").addEventListener("change", renderHistoryList);
   document.getElementById("historySubFilter").addEventListener("change", renderHistoryList);
 
-  // Setup API URL Modals & Settings
   document.getElementById("btnQuickSetupApi").addEventListener("click", () => {
     document.getElementById("modalInputGasUrl").value = getGasUrl();
     openModal("modalApiSetup");
   });
 
-  document.getElementById("btnModalSaveGasUrl").addEventListener("click", () => {
+  document.getElementById("btnModalSaveGasUrl").addEventListener("click", async () => {
     const val = document.getElementById("modalInputGasUrl").value.trim();
-    saveGasUrl(val);
-    closeModal("modalApiSetup");
+    if (await saveAndTestGasUrl(val)) {
+      closeModal("modalApiSetup");
+    }
   });
 
-  document.getElementById("btnSaveGasUrl").addEventListener("click", () => {
+  document.getElementById("btnSaveGasUrl").addEventListener("click", async () => {
     const val = document.getElementById("inputGasUrl").value.trim();
-    saveGasUrl(val);
+    await saveAndTestGasUrl(val);
   });
 
-  // Print QR Code
   document.getElementById("btnPrintQr").addEventListener("click", () => window.print());
 
-  // Close Modals
   document.querySelectorAll(".btn-close-modal").forEach(btn => {
     btn.addEventListener("click", () => closeModal(btn.dataset.close));
   });
 }
 
-function saveGasUrl(url) {
-  if (!url.startsWith("https://script.google.com/")) {
-    showToast("URL tidak valid. Harus diawali https://script.google.com/", "error");
-    return;
+async function saveAndTestGasUrl(url) {
+  if (!isValidExecUrl(url)) {
+    showToast("URL harus berbentuk https://script.google.com/macros/s/.../exec", "error");
+    return false;
   }
-  localStorage.setItem(STORAGE_KEYS.GAS_URL, url);
-  checkGasUrlConfig();
-  showToast("URL Google Apps Script berhasil disimpan!", "success");
+  showLoader("Menguji koneksi ke Google Apps Script...");
+  try {
+    const res = await fetch(url, { method: "GET", redirect: "follow" });
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (_) {
+      throw new Error("Server tidak merespons JSON. Pastikan saat Deploy dipilih 'Who has access: Anyone'.");
+    }
+    if (json.status === "success") {
+      localStorage.setItem(STORAGE_KEYS.GAS_URL, url);
+      checkGasUrlConfig();
+      showToast("Koneksi berhasil! Terhubung ke Google Sheets.", "success");
+      return true;
+    } else {
+      throw new Error(json.message || "Respon server tidak valid.");
+    }
+  } catch (err) {
+    showToast("Koneksi gagal: " + err.message, "error");
+    return false;
+  } finally {
+    hideLoader();
+  }
 }
 
 /* =========================================================
-   3. KOMUNIKASI API KE GOOGLE APPS SCRIPT (CORS-SAFE)
+   3. KOMUNIKASI API DENGAN DIAGNOSIS ERROR SPESIFIK
    ========================================================= */
 async function callGasApi(payload, loadingMsg = "Memproses...") {
   const url = getGasUrl();
-  if (!url) {
-    showToast("Atur URL Google Apps Script terlebih dahulu!", "error");
+  if (!isValidExecUrl(url)) {
+    showToast("URL Web App (/exec) belum diatur atau salah format!", "error");
     openModal("modalApiSetup");
-    throw new Error("URL API belum dikonfigurasi");
+    throw new Error("URL API belum valid");
   }
 
   showLoader(loadingMsg);
   try {
     const response = await fetch(url, {
       method: "POST",
+      redirect: "follow",
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
       },
       body: JSON.stringify(payload)
     });
-    const result = await response.json();
-    return result;
+
+    const rawText = await response.text();
+    try {
+      return JSON.parse(rawText);
+    } catch (_) {
+      throw new Error("Akses Apps Script ditolak (bukan JSON). Pastikan Deploy diatur ke 'Who has access: Anyone'.");
+    }
   } finally {
     hideLoader();
   }
@@ -400,7 +403,6 @@ async function handleEmployeeAbsenSubmit(e) {
     }, "Mencatat absen makan...");
 
     if (res.status === "success") {
-      // Simpan nama & departemen di HP karyawan agar kunjungan berikutnya < 5 detik
       localStorage.setItem(STORAGE_KEYS.EMP_NAME, nama);
       if (departemen !== "-") localStorage.setItem(STORAGE_KEYS.EMP_DEPT, departemen);
       restoreSavedEmployeeProfile();
@@ -414,7 +416,7 @@ async function handleEmployeeAbsenSubmit(e) {
       showToast(res.message || "Gagal menyimpan absen.", "error");
     }
   } catch (err) {
-    showToast("Gagal terhubung ke server. Periksa koneksi internet.", "error");
+    showToast(err.message || "Gagal terhubung ke server.", "error");
   }
 }
 
@@ -446,7 +448,7 @@ async function handleEmployeeSaranSubmit(e) {
       showToast(res.message || "Gagal mengirim masukan.", "error");
     }
   } catch (err) {
-    showToast("Gagal terhubung ke server.", "error");
+    showToast(err.message || "Gagal terhubung ke server.", "error");
   }
 }
 
@@ -469,7 +471,7 @@ async function handleAdminLogin(e) {
       showToast(res.message || "PIN Admin salah!", "error");
     }
   } catch (err) {
-    showToast("Gagal memverifikasi PIN. Periksa koneksi.", "error");
+    showToast(err.message || "Gagal memverifikasi PIN.", "error");
   }
 }
 
@@ -503,7 +505,7 @@ async function handleAdminCatringSubmit(e) {
       showToast(res.message || "Gagal menyimpan stok catering.", "error");
     }
   } catch (err) {
-    showToast("Terjadi gangguan koneksi.", "error");
+    showToast(err.message || "Terjadi gangguan koneksi.", "error");
   }
 }
 
@@ -537,7 +539,7 @@ async function handleAdminManualAbsenSubmit(e) {
       showToast(res.message || "Gagal menyimpan absen.", "error");
     }
   } catch (err) {
-    showToast("Terjadi gangguan koneksi.", "error");
+    showToast(err.message || "Terjadi gangguan koneksi.", "error");
   }
 }
 
@@ -591,7 +593,7 @@ async function fetchAdminDashboardData() {
       showToast(res.message || "Gagal memuat data.", "error");
     }
   } catch (err) {
-    showToast("Tidak dapat memuat data dari Google Sheets.", "error");
+    showToast(err.message || "Tidak dapat memuat data dari Google Sheets.", "error");
   }
 }
 
@@ -606,7 +608,7 @@ function getDateRanges() {
     prev.setDate(prev.getDate() - 1);
     prevStart = prevEnd = formatDateObj(prev);
   } else if (state.period === "week") {
-    const dayOfWeek = todayDate.getDay() === 0 ? 7 : todayDate.getDay(); // Senin = 1
+    const dayOfWeek = todayDate.getDay() === 0 ? 7 : todayDate.getDay();
     const monday = new Date(todayDate);
     monday.setDate(todayDate.getDate() - (dayOfWeek - 1));
     start = formatDateObj(monday);
@@ -658,7 +660,6 @@ function renderAdminAnalyticsAndHistory() {
   const catringCurr = filterByRange(state.rawData.catring, start, end);
   const absenPrev = filterByRange(state.rawData.absen, prevStart, prevEnd);
 
-  // 1. Update KPI Summary Cards
   const totalMakan = absenCurr.length;
   const totalCatring = catringCurr.reduce((sum, item) => sum + (Number(item.jumlahPorsi) || 0), 0);
   const totalSaran = saranCurr.length;
@@ -680,18 +681,12 @@ function renderAdminAnalyticsAndHistory() {
 
   document.getElementById("kpiPorsiHabisCount").textContent = `${porsiHabisCount} keluhan porsi habis`;
 
-  // 2. Hitung & Render Insights
   renderInsights(absenCurr, absenPrev, catringCurr, totalMakan, totalCatring, selisihPorsi, porsiHabisCount);
-
-  // 3. Render Charts
   renderAllCharts(absenCurr, catringCurr, saranCurr);
-
-  // 4. Render History List
   renderHistoryList();
 }
 
 function renderInsights(absenCurr, absenPrev, catringCurr, totalMakan, totalCatring, selisihPorsi, porsiHabisCount) {
-  // A. Kategori Catring Terbesar
   const catMap = {};
   catringCurr.forEach(c => {
     const key = c.kategoriMenu || "Reguler";
@@ -708,13 +703,11 @@ function renderInsights(absenCurr, absenPrev, catringCurr, totalMakan, totalCatr
     document.getElementById("insightTopCatringDesc").textContent = "Tambahkan stok catering lewat tombol + di bawah.";
   }
 
-  // B. Rata-rata Karyawan Harian
   const uniqueDays = new Set(absenCurr.map(a => a.tanggal)).size;
   const avgDaily = uniqueDays > 0 ? (totalMakan / uniqueDays).toFixed(1) : 0;
   document.getElementById("insightAvgDaily").textContent = `${avgDaily} Karyawan / Hari`;
   document.getElementById("insightAvgDailyDesc").textContent = `Dihitung dari ${uniqueDays} hari operasional makan pada periode ini.`;
 
-  // C. Perbandingan dengan Periode Sebelumnya
   const prevCount = absenPrev.length;
   let diffText = "Sama dengan periode sebelumnya";
   if (prevCount === 0 && totalMakan > 0) {
@@ -727,7 +720,6 @@ function renderInsights(absenCurr, absenPrev, catringCurr, totalMakan, totalCatr
   document.getElementById("insightPeriodCompare").textContent = diffText;
   document.getElementById("kpiMakanTrend").textContent = diffText;
 
-  // D. Kesehatan Stok & Peringatan Porsi Habis
   const healthTitle = document.getElementById("insightStockHealth");
   const healthDesc = document.getElementById("insightStockHealthDesc");
   if (selisihPorsi < 0 || porsiHabisCount > 0) {
@@ -745,7 +737,6 @@ function renderInsights(absenCurr, absenPrev, catringCurr, totalMakan, totalCatr
 function renderAllCharts(absenCurr, catringCurr, saranCurr) {
   if (typeof Chart === "undefined") return;
 
-  // Agregasi per tanggal untuk Grafik Perbandingan & Tren
   const dateSet = new Set([
     ...absenCurr.map(a => a.tanggal),
     ...catringCurr.map(c => c.tanggal)
@@ -756,9 +747,8 @@ function renderAllCharts(absenCurr, catringCurr, saranCurr) {
   const catringPerDate = sortedDates.map(d =>
     catringCurr.filter(c => c.tanggal === d).reduce((s, x) => s + (Number(x.jumlahPorsi) || 0), 0)
   );
-  const shortLabels = sortedDates.map(d => d.slice(5)); // MM-DD
+  const shortLabels = sortedDates.map(d => d.slice(5));
 
-  // Chart 1: Grouped Bar (Absen Makan vs Catring Tersedia)
   destroyChart("compare");
   const ctxCompare = document.getElementById("chartCompareMain").getContext("2d");
   state.charts.compare = new Chart(ctxCompare, {
@@ -788,7 +778,6 @@ function renderAllCharts(absenCurr, catringCurr, saranCurr) {
     }
   });
 
-  // Chart 2: Line Trend Absen Makan
   destroyChart("trend");
   const ctxTrend = document.getElementById("chartTrendLine").getContext("2d");
   state.charts.trend = new Chart(ctxTrend, {
@@ -813,7 +802,6 @@ function renderAllCharts(absenCurr, catringCurr, saranCurr) {
     }
   });
 
-  // Chart 3: Porsi Catring per Kategori Menu
   const catMenuTotals = {};
   catringCurr.forEach(c => {
     catMenuTotals[c.kategoriMenu] = (catMenuTotals[c.kategoriMenu] || 0) + (Number(c.jumlahPorsi) || 0);
@@ -836,7 +824,6 @@ function renderAllCharts(absenCurr, catringCurr, saranCurr) {
     }
   });
 
-  // Chart 4: Sebaran 3 Kategori Keluhan
   const saranCounts = [
     saranCurr.filter(s => s.kategori === "Porsi Habis").length,
     saranCurr.filter(s => s.kategori === "Rasa/Menu").length,
@@ -873,7 +860,7 @@ function destroyChart(key) {
 }
 
 /* =========================================================
-   6. RIWAYAT TRANSAKSI (READ-ONLY, SEARCH & FILTER)
+   6. RIWAYAT TRANSAKSI (READ-ONLY)
    ========================================================= */
 function renderHistoryList() {
   const { start, end } = getDateRanges();
@@ -964,7 +951,7 @@ function renderHistoryList() {
 }
 
 /* =========================================================
-   7. UTILITAS UI (MODAL, TOAST, LOADER, ESCAPE HTML)
+   7. UTILITAS UI
    ========================================================= */
 function openModal(id) {
   document.getElementById(id).classList.remove("hidden");
@@ -994,7 +981,7 @@ function showToast(message, type = "success") {
     toast.style.opacity = "0";
     toast.style.transition = "opacity 0.25s ease";
     setTimeout(() => toast.remove(), 260);
-  }, 3800);
+  }, 4200);
 }
 
 function escapeHtml(str) {
