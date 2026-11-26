@@ -2,7 +2,7 @@
  * KANTINKU HR - FRONTEND APPLICATION LOGIC (UPDATED DIAGNOSTICS)
  * Tempelkan URL Web App Google Apps Script kamu yang berakhiran /exec di bawah ini:
  */
-const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec
+const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzwqqMKWW-BUJH2SbFXaf0BoTQ5TRdQVXzgQXy3zq_n8in4ZBV6aqWuVmCaGBqqetWo/exec"
 const STORAGE_KEYS = {
   GAS_URL: "kantinku_gas_url",
   EMP_NAME: "kantinku_emp_name",
